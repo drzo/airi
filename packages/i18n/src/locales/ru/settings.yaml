@@ -779,6 +779,9 @@ pages:
       access-token-secret-description: Ваш секрет токена доступа X / Twitter
       access-token-secret-placeholder: Введите ваш секрет токена доступа X / Twitter
       configured: X / Twitter настроен правильно!
+    stickers:
+      artwork:
+        airi-agree: Yes
     web-search:
       title: Веб Поиск
       description: Позволить AIRI искать в Интернете текущую информацию

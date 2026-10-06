@@ -926,7 +926,7 @@ pages:
         airi-tired: 疲惫
         airi-affectionate: 喜欢
         airi-awkward: 尴尬
-        airi-agree: 赞同
+        airi-agree: Yes
         airi-disagree: 拒绝
     web-search:
       title: 网络搜索
@@ -1214,19 +1214,6 @@ pages:
         转录（语音转文本）模型服务来源，例如 Whisper.cpp, OpenAI, Azure Speech
     description: LLM，语音合成，语音识别服务来源等
     provider:
-      minimax-speech:
-        description: minimax.io
-        errors:
-          provider-initialization-failed: 初始化 MiniMax 语音提供程序失败。
-        fields:
-          field:
-            model:
-              description: 选择用于生成语音的 MiniMax 文本转语音模型。
-              label: 模型
-              placeholder: 选择一个 MiniMax 模型...
-        playground:
-          default-text: 您好！这是 MiniMax 语音合成测试。
-        title: MiniMax Speech
       sherpaw-transcription:
         description: 使用内置或按需加载的模型进行本地语音识别，无需 API 密钥。
         language:
@@ -1474,6 +1461,17 @@ pages:
       index-tts-vllm:
         callout_indextts2_unavailable_title: 暂不支持
         callout_indextts2_unavailable: 目前尚未支持 IndexTTS2，请使用 IndexTTS。
+      minimax-speech:
+        errors:
+          provider-initialization-failed: 初始化 MiniMax 语音提供程序失败。
+        fields:
+          field:
+            model:
+              description: 选择用于生成语音的 MiniMax 文本转语音模型。
+              label: 模型
+              placeholder: 选择一个 MiniMax 模型...
+        playground:
+          default-text: 您好！这是 MiniMax 语音合成测试。
       moonshot:
         description: Moonshot.ai
         title: 月之暗面
