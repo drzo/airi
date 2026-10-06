@@ -4,10 +4,11 @@
   <body>
     <script type="module">
       import { openDteWindowBridge } from '../dte-stage-bridge.ts'
-      const origin = new URLSearchParams(location.search).get('origin')
+      const params = new URLSearchParams(location.search)
+      const origin = params.get('origin') ?? params.get('dteParentOrigin')
       if (origin) {
         const receiver = openDteWindowBridge({
-          selected: { id: 'miara', archiveSha256: 'a'.repeat(64) },
+          selected: { id: 'miara', archiveSha256: params.get('modelSha256') ?? 'a'.repeat(64) },
           currentWindow: window,
           parentOrigin: origin,
         })
