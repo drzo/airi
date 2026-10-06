@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>AIRI stage transport fixture</title></head>
+  <body>
+    <script type="module">
+      import { openDteWindowBridge } from '../dte-stage-bridge.ts'
+      const origin = new URLSearchParams(location.search).get('origin')
+      if (origin) {
+        const receiver = openDteWindowBridge({
+          selected: { id: 'miara', archiveSha256: 'a'.repeat(64) },
+          currentWindow: window,
+          parentOrigin: origin,
+        })
+        window.dteReceiver = receiver
+      }
+    </script>
+  </body>
+</html>

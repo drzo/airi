@@ -98,6 +98,7 @@
     "unplugin-lightningcss": "catalog:",
     "unplugin-raw": "catalog:",
     "unplugin-unused": "catalog:",
+    "unrun": "catalog:",
     "vite": "catalog:",
     "vite-plugin-inspect": "catalog:",
     "vitest": "catalog:vitest",

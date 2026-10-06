@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>AIRI wrong-source fixture</title></head>
+  <body>
+    <script type="module">
+      import { defineEventa } from '@moeru/eventa'
+      import { createContext } from '@moeru/eventa/adapters/window-message'
+      const origin = new URLSearchParams(location.search).get('origin')
+      const stage = window.parent.frames[0]
+      const channel = createContext({
+        channel: 'airi:dte:stage:v1',
+        currentWindow: window,
+        targetWindow: () => stage,
+        expectedSource: () => stage,
+        targetOrigin: origin,
+        expectedOrigin: origin,
+      })
+      const cueEvent = defineEventa('airi:dte:stage:cue:v1')
+      window.addEventListener('message', (event) => {
+        if (event.origin === origin && event.data?.kind === 'send-wrong-source')
+          void channel.context.emit(cueEvent, event.data.cue)
+      })
+      window.parent.postMessage({ kind: 'intruder-ready' }, origin)
+    </script>
+  </body>
+</html>
