@@ -51,6 +51,9 @@ const emptyImages: readonly string[] = Object.freeze([])
 const images = computed(() => typeof props.message.content === 'string'
   ? emptyImages
   : props.message.content.filter(part => part.type === 'image_url').map(part => part.image_url.url))
+const audio = computed(() => typeof props.message.content === 'string'
+  ? []
+  : props.message.content.filter(part => part.type === 'input_audio').map(part => `data:audio/${part.input_audio.format === 'mp3' ? 'mpeg' : 'wav'};base64,${part.input_audio.data}`))
 
 const containerClasses = computed(() => [
   'flex',
@@ -73,7 +76,7 @@ const copyText = computed(() => getChatHistoryItemCopyText(props.message as Chat
 </script>
 
 <template>
-  <div v-if="message.role === 'user'" :class="['font-cute', containerClasses]" class="ph-no-capture">
+  <div v-if="message.role === 'user'" :class="['font-cute ph-no-capture', containerClasses]">
     <ChatActionMenu
       :can-reply="canReply"
       :copy-text="copyText"
@@ -87,17 +90,17 @@ const copyText = computed(() => getChatHistoryItemCopyText(props.message as Chat
       <template #default="{ setMeasuredElement }">
         <div
           :ref="setMeasuredElement"
-          flex="~ col" shadow="sm neutral-200/50 dark:none"
-          min-w-20 rounded-xl h="unset <sm:fit"
           :class="[
-            'chat-message-item-container',
+            'chat-message-item-container flex flex-col',
+            'min-w-20 rounded-xl h-unset <sm:h-fit',
+            'shadow-sm shadow-neutral-200/50 dark:shadow-none',
             boxClasses,
             (isStageWeb() || isStageCapacitor()) && props.variant === 'mobile' ? 'select-none sm:select-auto' : '',
           ]"
         >
           <ChatReplyQuote v-if="replyTarget" :target="replyTarget" />
-          <div>
-            <span text-sm text="black/60 dark:white/65" font-normal class="inline <sm:hidden">{{ label }}</span>
+          <div v-if="variant === 'mobile'">
+            <span :class="['inline <sm:hidden text-sm font-normal', 'text-black/60 dark:text-white/65']">{{ label }}</span>
           </div>
           <div v-if="images.length" :class="['flex flex-wrap gap-2 py-2']">
             <img v-for="(image, index) in images" :key="index" :src="image" :alt="t('stage.chat.images.description')" :class="['max-h-64 max-w-full rounded-xl object-contain']">
@@ -106,6 +109,7 @@ const copyText = computed(() => getChatHistoryItemCopyText(props.message as Chat
             :content="content as string"
             class="break-words"
           />
+          <audio v-for="(source, index) in audio" :key="index" :src="source" controls :aria-label="t('stage.chat.voice-message.preview')" :class="['my-2 max-w-full']" />
         </div>
       </template>
     </ChatActionMenu>

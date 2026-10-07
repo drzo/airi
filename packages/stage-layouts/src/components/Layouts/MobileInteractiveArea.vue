@@ -2,9 +2,8 @@
 import type { ChatHistoryReplyPayload, ChatImageAttachment } from '@proj-airi/stage-ui/components/scenarios/chat'
 import type { ChatHistoryItem } from '@proj-airi/stage-ui/types/chat'
 
-import { isStageTamagotchi } from '@proj-airi/stage-shared'
 import { useThreeViewControl } from '@proj-airi/stage-ui-three'
-import { CharacterSwitcherDrawer, ChatHistory, HearingStatus } from '@proj-airi/stage-ui/components'
+import { CharacterSwitcherDrawer, ChatHistory, HearingConfig, HearingStatus, VoiceDrafts, VoiceMessageControls } from '@proj-airi/stage-ui/components'
 import { ChatImageAttachmentPreview, ChatReplyPreview, ChatSessionsDrawer, useChatComposer, useChatImages } from '@proj-airi/stage-ui/components/scenarios/chat'
 import { useAnalytics, useAudioAnalyzer } from '@proj-airi/stage-ui/composables'
 import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
@@ -15,7 +14,7 @@ import { useL2dViewControl } from '@proj-airi/stage-ui/stores/live2d'
 import { useContextBridgeStore } from '@proj-airi/stage-ui/stores/mods/api/context-bridge'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
 import { useSettingsStageModel } from '@proj-airi/stage-ui/stores/settings/stage-model'
-import { BasicButton, BasicTextarea } from '@proj-airi/ui'
+import { BasicButton, BasicTextarea, BottomDrawer } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -26,7 +25,6 @@ import MobileHeader from './MobileHeader.vue'
 
 import { useChatInterruption } from '../../composables/use-chat-interruption'
 import { useMobileInteractiveAreaLayout } from '../../composables/use-mobile-interactive-area-layout'
-import { useTranscriptions } from '../../composables/use-transcriptions'
 import { useChatToolCallRerun } from '../../composables/useChatToolCallRerun'
 import { useStopSpeakingButton } from '../../composables/useStopSpeakingButton'
 
@@ -102,6 +100,7 @@ async function handleRetryMessage(index: number) {
 }
 
 const sessionsDrawerOpen = shallowRef(false)
+const hearingOpen = shallowRef(false)
 const mobileInteractiveArea = useTemplateRef<HTMLElement>('mobileInteractiveArea')
 const messageComposer = useTemplateRef<HTMLElement>('messageComposer')
 const inputBubble = useTemplateRef<HTMLElement>('inputBubble')
@@ -162,6 +161,19 @@ const viewControlsEnabled = computed(() => {
 })
 const settingsAudioDevice = useSettingsAudioDevice()
 const { enabled, stream } = storeToRefs(settingsAudioDevice)
+
+watch(hearingOpen, async (open) => {
+  if (open)
+    await settingsAudioDevice.askPermission()
+})
+
+function restoreComposerFocus(event: Event) {
+  event.preventDefault()
+  const target = mobileInteractiveArea.value?.querySelector<HTMLButtonElement>('[data-testid="mobile-voice-button"]')
+    ?? inputBubble.value?.querySelector<HTMLTextAreaElement>('textarea')
+  target?.focus({ preventScroll: true })
+}
+
 const { t } = useI18n()
 const { audioContext } = useAudioContext()
 const { startAnalyzer, stopAnalyzer } = useAudioAnalyzer()
@@ -220,14 +232,6 @@ function isMobileDevice() {
   return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
 
-const { receiveTranscription } = useTranscriptions(
-  {
-    messageInputRef: messageInput,
-    sendMessage: handleSend,
-    isStageTamagotchi,
-  },
-)
-defineExpose({ receiveTranscription })
 const { speechMuted, toggleSpeechMuted } = useStopSpeakingButton()
 const characterVoiceEnabled = computed({
   get: () => !speechMuted.value,
@@ -372,8 +376,10 @@ onUnmounted(() => {
       ]"
     >
       <div :class="['absolute left-0 top-2 z-30 -translate-y-full px-3 font-sans']">
-        <div flex="~ col" gap-1>
+        <div :class="['flex flex-col gap-1']">
           <slot name="status" />
+          <VoiceDrafts />
+          <VoiceMessageControls />
           <HearingStatus />
         </div>
       </div>
@@ -477,7 +483,7 @@ onUnmounted(() => {
             :aria-label="t('stage.chat.actions.stop')"
             @click="stopActiveResponse"
           >
-            <div class="i-solar:stop-outline size-5" />
+            <div :class="['i-solar:stop-outline size-5']" />
           </button>
           <button
             v-else-if="hasSubmission"
@@ -489,11 +495,41 @@ onUnmounted(() => {
             ]"
             @click="handleSend"
           >
-            <div class="i-solar:arrow-up-outline size-5" />
+            <div :class="['i-solar:arrow-up-outline size-5']" />
           </button>
+          <BasicButton
+            v-else
+            size="unset"
+            type="button"
+            data-testid="mobile-voice-button"
+            :title="t('stage.chat.voice-input')"
+            :aria-label="t('stage.chat.voice-input')"
+            aria-haspopup="dialog"
+            :aria-expanded="hearingOpen"
+            :class="[
+              'size-10 shrink-0 rounded-full backdrop-blur-md',
+              'border-2 border-solid border-neutral-200/60 bg-neutral-100/80 text-primary-600',
+              'dark:border-neutral-700/60 dark:bg-neutral-950/80 dark:text-primary-300',
+              'hover:bg-primary-100/80 dark:hover:bg-primary-900/60',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+            ]"
+            @click="hearingOpen = true"
+          >
+            <span
+              aria-hidden="true"
+              :class="[enabled ? 'i-solar:microphone-3-bold' : 'i-solar:microphone-3-outline', 'size-5']"
+            />
+          </BasicButton>
         </div>
       </div>
     </div>
+    <BottomDrawer
+      v-model="hearingOpen"
+      :title="t('stage.mobile-tools.hearing')"
+      @close-auto-focus="restoreComposerFocus"
+    >
+      <HearingConfig />
+    </BottomDrawer>
     <div
       v-show="viewControlsEnabled"
       data-testid="view-controls-toolbar"

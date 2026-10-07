@@ -2,6 +2,30 @@
 
 Shared core for stage
 
+## Experimental features
+
+Register flags in `libs/feature-flags.ts`. Read their state through `useFeatureFlagsStore().isEnabled(key)`.
+Set `availability` to `local` or `cloud`. Local flags expose device switches without Cloud access.
+Cloud decides whether each granted Cloud flag allows account opt-in or uses direct control. Client registrations do not duplicate this mode.
+`cloud-opt-in` flags expose switches only after Cloud grants access to a verified account. They start disabled and retain choices per account on this device.
+`cloud-controlled` flags follow Cloud grants directly and never expose a switch.
+Missing Cloud grants disable Cloud features. Refresh failures and account changes clear grants, not local choices.
+`useCloudFetch()` in `composables/cloud.ts` shares the Cloud origin and authenticated fetch boundary. The store reads `GET /v1/feature-flags`.
+Set `VITE_CLOUD_URL` for a custom Cloud origin. Deploy its migration and API before the client.
+Keep authorization checks on the server.
+
+## Message times
+
+Chat history shows a centered timestamp before the first dated message and after five minutes without a message.
+Timestamps use stored message times, the interface locale, and the device timezone. Messages without valid timestamps have no separator.
+Today's separators show only the time. Yesterday and the day before use relative labels.
+Older separators show the month and day. Dates outside the current year also show the year.
+Click a separator to toggle its full date and time. Relative labels refresh every minute while the history is open.
+`date-fns` handles calendar comparisons and localized formatting through `intlFormat` and `intlFormatDistance`.
+The session list displays and sorts by the latest valid user or assistant message timestamp.
+Sessions without dated conversation messages use their creation time. Loading messages updates the list from the stored history.
+Saving or synchronizing a session does not change its displayed activity time unless its messages change.
+
 ## Startup progress
 
 `useStartupResourcesStore` records each resource as queued, loading, ready, failed, or skipped.
@@ -14,6 +38,35 @@ Each app's HTML shows the first splash before Vue mounts. CSS hides it when Vue 
 The home page reports when its character model is ready or fails. A failed model keeps the overlay visible.
 If the model fails, the user can retry the app or continue without a character.
 The overlay emits `finished` when all resources are ready. Apps open onboarding at that point.
+
+## Voice integration
+
+The audio host owns one VoiceController and one shared microphone input.
+Other windows send Eventa commands and render snapshots. They do not create competing capture or playback runtimes.
+Consumers subscribe to the microphone input with their own abort signal. The last subscriber to leave releases the device.
+
+- `useVoiceStore` owns application routing, drafts, responses, and host command registration.
+- `useVoiceController` binds public controller state to Vue and moves the controller to the input of the selected device.
+- `useVoiceInput` maps hold and release controls to host commands.
+- `useVoiceMessagesStore` owns independent recording previews and explicit attachment submission.
+- Hearing selects providers and converts captured PCM to each provider's upload format. It does not open the microphone.
+- Speech preserves existing chunked synthesis and bidirectional provider output.
+
+Recording completion never sends an attachment. Failed submission retains its preview and stable message identity.
+Native audio requires declared model support and Chat Completions. Other models transcribe the recording with the configured Hearing provider.
+Local history keeps the audio and cached transcription. Audio turns remain local because cloud text records cannot preserve their media.
+
+### External wake-word adapters
+
+`useWakeWordsStore` validates pronunciations against a supplied model vocabulary and preserves them in exported character cards.
+Its device-local catalog pauses unresolved pronunciation conflicts. `chooseOwner` activates the selected character's copy.
+`setWords` returns conflicts for tools or settings to present. It does not invent a model or a keyword-management UI.
+
+An external KWS adapter supplies `detectWakeWord` to `voice.startListening`.
+After catalog matching, it calls `voice.resolveWakeTarget(characterId, signal)` to select a session without navigating the chat window.
+The detector remains active during playback. A supplied `acceptSpeech` classifier can reject playback echo before admission.
+The default policy allows barge-in when the browser reports echo cancellation. Without that support, automatic admission waits for playback to end.
+Model selection, acoustic echo classification, and enrollment remain external integrations.
 
 ## Chat sampling
 
