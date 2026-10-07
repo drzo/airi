@@ -40,6 +40,7 @@ import {
   useMotionUpdatePluginLipSync,
   useMotionUpdatePluginManualControl,
 } from '../../../composables/live2d'
+import { applyDtePose, hashSelectedArchive, openDteWindowBridge } from '../../../composables/live2d/dte-stage-bridge'
 import { useFitModel } from '../../../composables/live2d/fit-model'
 import { Emotion, EmotionNeutralMotionName } from '../../../constants/emotions'
 import { ScreenAmbientLightFilter } from '../../../filters/screen-ambient-light'
@@ -130,6 +131,7 @@ const pixiApp = toRef(() => props.app)
 const paused = toRef(() => props.paused)
 const focusAt = toRef(() => props.focusAt)
 const model = shallowRef<Live2DModel<PixiLive2DInternalModel>>()
+let dteWindowBridge: ReturnType<typeof openDteWindowBridge> | undefined
 const initialModelWidth = ref<number>(0)
 const initialModelHeight = ref<number>(0)
 const mouthOpenSize = computed(() => Math.max(0, Math.min(100, props.mouthOpenSize)))
@@ -288,6 +290,8 @@ async function loadModel() {
 async function performModelLoad() {
   modelLoading.value = true
   componentState.value = 'loading'
+  dteWindowBridge?.dispose()
+  dteWindowBridge = undefined
 
   if (!pixiApp.value || !pixiApp.value.stage) {
     try {
@@ -459,6 +463,9 @@ async function performModelLoad() {
       'final',
     )
     motionManagerUpdate.register(useMotionUpdatePluginManualControl(manualMotionControl, manualMotionSpring), 'final')
+    motionManagerUpdate.register((ctx) => {
+      applyDtePose(ctx.model, dteWindowBridge?.bridge.snapshot())
+    }, 'final')
     motionManagerUpdate.register(useMotionUpdatePluginLipSync(mouthOpenSize, nowSpeaking), 'final')
     motionManagerUpdate.register(useMotionUpdatePluginBreathControl(manualBreathControl), 'final')
 
@@ -538,6 +545,7 @@ async function performModelLoad() {
     }
 
     emits('modelLoaded')
+    void connectDteWindowBridge(pendingModel.src, live2DModel)
   }
   catch (error) {
     console.error('[Live2D] Failed to load model:', error)
@@ -549,6 +557,30 @@ async function performModelLoad() {
     await initExpressionController(internalModelRef.value, loadedModelId).catch((err) => {
       console.warn('[Model.vue] Expression controller initialization failed:', err)
     })
+  }
+}
+
+async function connectDteWindowBridge(source: string, loadedModel: Live2DModel<PixiLive2DInternalModel>) {
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('dteBridge') !== '1')
+    return
+  const modelId = params.get('dteModelId')
+  const parentOrigin = params.get('dteParentOrigin')
+  if (!modelId || !parentOrigin || (!source.endsWith('.zip') && !source.startsWith('blob:')))
+    return
+
+  try {
+    const archiveSha256 = await hashSelectedArchive(source)
+    if (isUnmounted || model.value !== loadedModel)
+      return
+    dteWindowBridge = openDteWindowBridge({
+      selected: { id: modelId, archiveSha256 },
+      currentWindow: window,
+      parentOrigin,
+    })
+  }
+  catch (error) {
+    console.warn('[Live2D] DTE stage bridge is unavailable:', error)
   }
 }
 
@@ -904,6 +936,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   isUnmounted = true
+  dteWindowBridge?.dispose()
+  dteWindowBridge = undefined
   resizeAnimation?.pause()
   disposeShouldUpdateView?.()
   expressionController.dispose()

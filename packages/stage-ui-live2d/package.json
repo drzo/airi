@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@lemonneko/crop-empty-pixels": "catalog:",
+    "@moeru/eventa": "catalog:",
     "@moeru/std": "catalog:",
     "@pixi/app": "catalog:",
     "@pixi/constants": "catalog:",
@@ -67,6 +68,7 @@
     "pixi-filters": "catalog:",
     "pixi-live2d-display": "catalog:",
     "three": "catalog:",
+    "valibot": "catalog:",
     "vue": "catalog:",
     "zod": "catalog:"
   },
