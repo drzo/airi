@@ -38,8 +38,9 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # v3 installs the removed SDK package "tools" and the step fails.
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - uses: pnpm/setup@v2
         with:
